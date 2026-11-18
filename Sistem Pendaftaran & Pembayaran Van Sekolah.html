@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VanSekolah.my — Sistem Pendaftaran & Pembayaran Servis Van Sekolah</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        school: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Gaya khusus untuk cetakan resit sahaja */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #receipt-printable, #receipt-printable * {
+                visibility: visible;
+            }
+            #receipt-printable {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                color: black !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 20px !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        /* Animasi lancar untuk notifikasi toast */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- NAVBAR UTAMA -->
+    <header class="bg-navy-900 text-white sticky top-0 z-40 shadow-lg border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3 md:h-18 gap-3">
+                <!-- Logo & Jenama -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-school-400 text-navy-900 flex items-center justify-center shadow-md shadow-amber-500/20">
+                            <i class="fa-solid fa-van-shuttle text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-extrabold text-lg tracking-tight text-white">VanSekolah<span class="text-school-400">.my</span></span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-school-400 px-2 py-0.5 rounded-full border border-slate-700">Putrajaya & Cyberjaya</span>
+                            </div>
+                            <p class="text-xs text-slate-400 hidden sm:block">Perkhidmatan Pengangkutan Pelajar Selamat & Berdaftar</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Navigasi Mod Paparan (Ibu Bapa vs Admin) -->
+                <div class="flex items-center justify-between sm:justify-end gap-2 bg-navy-950/70 p-1 rounded-xl border border-slate-800">
+                    <button id="tab-parent" onclick="switchRole('parent')" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-school-400 text-navy-900 shadow-sm">
+                        <i class="fa-solid fa-user-group"></i>
+                        <span>Portal Ibu Bapa</span>
+                    </button>
+                    <button id="tab-admin" onclick="switchRole('admin')" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-300 hover:text-white hover:bg-slate-800/70">
+                        <i class="fa-solid fa-gauge-high"></i>
+                        <span>Pentadbir (Admin)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- KANDUNGAN UTAMA -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- ===================================================================== -->
+        <!-- PAPARAN 1: PORTAL IBU BAPA / PENJAGA                                  -->
+        <!-- ===================================================================== -->
+        <section id="view-parent" class="space-y-8">
+            
+            <!-- Banner Ringkas Selamat Datang & Info Bulan Semasa -->
+            <div class="bg-gradient-to-r from-navy-900 via-navy-800 to-slate-800 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-school-400/15 border border-school-400/30 text-school-400 text-xs font-semibold mb-2">
+                            <i class="fa-solid fa-calendar-check"></i>
+                            <span>Sesi Persekolahan — Bulan Semasa: <span id="current-month-label">November 2026</span></span>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Selamat Datang ke Portal Ibu Bapa</h1>
+                        <p class="text-slate-300 text-sm sm:text-base mt-1 max-w-2xl">Daftarkan anak anda untuk servis van sekolah, semak tugasan pemandu, dan jelaskan yuran bulanan secara dalam talian dengan resit rasmi segera.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        <button onclick="document.getElementById('registration-section').scrollIntoView({behavior: 'smooth'})" class="bg-school-400 hover:bg-school-500 text-navy-900 font-bold px-4 py-2.5 rounded-xl text-sm transition shadow-md flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Daftar Anak Baru</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Hiasan Latar Belakang -->
+                <i class="fa-solid fa-bus-simple text-white/5 text-9xl absolute -right-4 -bottom-6 pointer-events-none"></i>
+            </div>
+
+            <!-- BAHAGIAN A: SENARAI ANAK BERDAFTAR & STATUS BAYARAN -->
+            <div class="space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-navy-900 flex items-center gap-2">
+                            <i class="fa-solid fa-children text-school-500"></i>
+                            <span>Senarai Pelajar Berdaftar & Status Yuran</span>
+                        </h2>
+                        <p class="text-sm text-slate-500">Semak maklumat van yang ditetapkan dan status pembayaran bulan semasa.</p>
+                    </div>
+                    <div id="parent-unpaid-summary" class="text-sm font-semibold px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2">
+                        <!-- Diisi secara dinamik oleh JS -->
+                    </div>
+                </div>
+
+                <!-- Grid Kad Pelajar -->
+                <div id="parent-students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- Kad pelajar dirender di sini -->
+                </div>
+            </div>
+
+            <!-- BAHAGIAN B: BORANG PENDAFTARAN PELAJAR BARU & SEJARAH PEMBAYARAN -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Kolum Kiri (7/12): Borang Pendaftaran -->
+                <div id="registration-section" class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-navy-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-school-400/20 text-school-400 flex items-center justify-center">
+                                <i class="fa-solid fa-file-signature"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-base">Borang Pendaftaran Pelajar Baru</h3>
+                                <p class="text-xs text-slate-400">Lengkapkan maklumat anak dan lokasi ambil/hantar</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="registration-form" onsubmit="handleRegisterStudent(event)" class="p-6 space-y-5">
+                        <!-- Maklumat Pelajar -->
+                        <div class="space-y-4">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-1.5">1. Maklumat Pelajar</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Nama Penuh Pelajar <span class="text-red-500">*</span></label>
+                                    <input type="text" id="reg-name" required placeholder="Contoh: Muhammad Adam bin Haris" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-school-400 focus:border-school-400 outline-none text-sm transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Umur / Darjah <span class="text-red-500">*</span></label>
+                                    <select id="reg-grade" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-school-400 focus:border-school-400 outline-none text-sm bg-white transition">
+                                        <option value="">Pilih Darjah / Tingkatan</option>
+                                        <option value="Pra-Sekolah (6 Tahun)">Pra-Sekolah (6 Tahun)</option>
+                                        <option value="Tahun 1 (7 Tahun)">Tahun 1 (7 Tahun)</option>
+                                        <option value="Tahun 2 (8 Tahun)">Tahun 2 (8 Tahun)</option>
+                                        <option value="Tahun 3 (9 Tahun)">Tahun 3 (9 Tahun)</option>
+                                        <option value="Tahun 4 (10 Tahun)">Tahun 4 (10 Tahun)</option>
+                                        <option value="Tahun 5 (11 Tahun)">Tahun 5 (11 Tahun)</option>
+                                        <option value="Tahun 6 (12 Tahun)">Tahun 6 (12 Tahun)</option>
+                                        <option value="Tingkatan 1 - 3">Tingkatan 1 - 3</option>
+                                        <option value="Tingkatan 4 - 5">Tingkatan 4 - 5</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Nama Sekolah <span class="text-red-500">*</span></label>
+                                    <select id="reg-school" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-school-400 focus:border-school-400 outline-none text-sm bg-white transition">
+                                        <option value="">Pilih Sekolah</option>
+                                        <option value="SK Putrajaya Presint 8(1)">SK Putrajaya Presint 8(1)</option>
+                                        <option value="SK Putrajaya Presint 9(2)">SK Putrajaya Presint 9(2)</option>
+                                        <option value="SK Putrajaya Presint 11(1)">SK Putrajaya Presint 11(1)</option>
+                                        <option value="SMK Putrajaya Presint 8(1)">SMK Putrajaya Presint 8(1)</option>
+                                        <option value="SRA Al-Najah Presint 9">SRA Al-Najah Presint 9</option>
+                                        <option value="SK Cyberjaya">SK Cyberjaya</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Sesi Persekolahan <span class="text-red-500">*</span></label>
+                                    <select id="reg-session" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-school-400 focus:border-school-400 outline-none text-sm bg-white transition">
+                                        <option value="Pagi">Sesi Pagi (7.30 PG - 1.00 PTG)</option>
+                                        <option value="Petang">Sesi Petang (1.15 PTG - 6.30 PTG)</option>
+                                        <option value="Pagi & Petang">Pagi & Petang (Sekolah Kebangsaan + KAFA)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pilihan Pelan Perjalanan -->
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-1.5">2. Pilihan Pelan Perjalanan Bulanan <span class="text-red-500">*</span></h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="plan-options-container">
+                                <!-- Diisi secara dinamik berdasarkan harga semasa -->
+                            </div>
+                        </div>
+
+                        <!-- Maklumat Penjaga & Alamat -->
+                        <div class="space-y-4">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-1.5">3. Maklumat Ibu Bapa / Penjaga & Lokasi</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Nama Ibu Bapa / Penjaga <span class="text-red-500">*</span></label>
+                                    <input type="text" id="reg-parent" required placeholder="Contoh: En. Haris bin Ismail" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-school-400 focus:border-school-400 outline-none text-sm transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">No. Telefon (WhatsApp) <span class="text-red-500">*</span></label>
+                                    <div class="relative">
+                                        <span class="absolute left-3.5 top-2.5 text-sm text-slate-400 font-medium">+60</span>
+                                        <input type="tel" id="reg-phone" required placeholder="12-345 6789" pattern="[0-9\-\s]{8,13}" class="w-full pl-12 pr-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-school-400 focus:border-school-400 outline-none text-sm transition">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Alamat Penuh Ambil & Hantar <span class="text-red-500">*</span></label>
+                                <textarea id="reg-address" rows="2" required placeholder="Contoh: No. 14, Jalan P9B/2, Presint 9, 62250 Putrajaya" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-school-400 focus:border-school-400 outline-none text-sm transition"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100">
+                            <p class="text-xs text-slate-500"><i class="fa-solid fa-shield-halved text-emerald-600 mr-1"></i> Data anda dilindungi & digunakan untuk pengurusan laluan van sahaja.</p>
+                            <button type="submit" class="w-full sm:w-auto bg-navy-900 hover:bg-navy-800 text-white font-semibold px-6 py-3 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-paper-plane text-school-400"></i>
+                                <span>Hantar Pendaftaran</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Kolum Kanan (5/12): Sejarah Pembayaran -->
+                <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-base">Sejarah Pembayaran</h3>
+                                <p class="text-xs text-slate-400">Klik mana-mana rekod untuk lihat resit rasmi</p>
+                            </div>
+                        </div>
+                        <span id="payment-history-count" class="text-xs font-bold bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full">0 Rekod</span>
+                    </div>
+
+                    <div class="p-4 sm:p-5">
+                        <div id="payment-history-list" class="space-y-3 max-h-[540px] overflow-y-auto pr-1">
+                            <!-- Senarai transaksi dirender di sini -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- PAPARAN 2: PAPAN PEMUKA PENTADBIR (ADMIN DASHBOARD)                    -->
+        <!-- ===================================================================== -->
+        <section id="view-admin" class="hidden space-y-8">
+            
+            <!-- Header Admin & Butang Reset Data -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-md bg-navy-900 text-school-400 text-xs font-bold uppercase tracking-wider">Mod Pentadbir</span>
+                        <h1 class="text-xl sm:text-2xl font-bold text-navy-900">Pengurusan Operasi & Kutipan Van</h1>
+                    </div>
+                    <p class="text-sm text-slate-500 mt-1">Urus pendaftaran pelajar, agihan van, status bayaran tunai, dan tetapan kadar yuran bulanan.</p>
+                </div>
+                <button onclick="openResetModal()" class="self-start sm:self-auto px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>Reset Data Contoh</span>
+                </button>
+            </div>
+
+            <!-- 4 KAD STATISTIK UTAMA -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                <!-- Stat 1: Jumlah Pelajar -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Jumlah Pelajar</p>
+                        <h3 id="stat-total-students" class="text-2xl font-extrabold text-navy-900 mt-0.5">0</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Pelajar aktif berdaftar</p>
+                    </div>
+                </div>
+
+                <!-- Stat 2: Kutipan Bulan Ini -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-sack-dollar"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Kutipan Bulan Ini</p>
+                        <h3 id="stat-total-collected" class="text-2xl font-extrabold text-emerald-600 mt-0.5">RM 0.00</h3>
+                        <p id="stat-collected-sub" class="text-xs text-slate-400 mt-0.5">0 daripada 0 telah bayar</p>
+                    </div>
+                </div>
+
+                <!-- Stat 3: Bayaran Tertunggak -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Yuran Tertunggak</p>
+                        <h3 id="stat-total-unpaid" class="text-2xl font-extrabold text-amber-600 mt-0.5">RM 0.00</h3>
+                        <p id="stat-unpaid-count" class="text-xs text-slate-400 mt-0.5">0 pelajar belum bayar</p>
+                    </div>
+                </div>
+
+                <!-- Stat 4: Kapasiti Van -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-van-shuttle"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Kapasiti Armada Van</p>
+                        <h3 id="stat-van-capacity" class="text-2xl font-extrabold text-navy-900 mt-0.5">0 / 36</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">3 Van Beroperasi (12 kerusi/van)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JADUAL PENGURUSAN PELAJAR & LALUAN -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-navy-900">Senarai Pelajar & Pengurusan Laluan</h2>
+                        <p class="text-xs text-slate-500">Tukar nombor van, tandakan bayaran tunai selesai, atau padam rekod pelajar.</p>
+                    </div>
+
+                    <!-- Bar Carian & Penapis -->
+                    <div class="flex flex-col sm:flex-row gap-2.5">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                            <input type="text" id="admin-search" oninput="renderAdminTable()" placeholder="Cari nama pelajar / penjaga..." class="w-full sm:w-56 pl-9 pr-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-school-400 outline-none">
+                        </div>
+                        <select id="admin-filter-school" onchange="renderAdminTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-school-400 outline-none">
+                            <option value="ALL">Semua Sekolah</option>
+                            <option value="SK Putrajaya Presint 8(1)">SK Putrajaya Presint 8(1)</option>
+                            <option value="SK Putrajaya Presint 9(2)">SK Putrajaya Presint 9(2)</option>
+                            <option value="SK Putrajaya Presint 11(1)">SK Putrajaya Presint 11(1)</option>
+                            <option value="SMK Putrajaya Presint 8(1)">SMK Putrajaya Presint 8(1)</option>
+                            <option value="SRA Al-Najah Presint 9">SRA Al-Najah Presint 9</option>
+                            <option value="SK Cyberjaya">SK Cyberjaya</option>
+                        </select>
+                        <select id="admin-filter-status" onchange="renderAdminTable()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-school-400 outline-none">
+                            <option value="ALL">Semua Status Bayaran</option>
+                            <option value="PAID">Selesai Bayar</option>
+                            <option value="UNPAID">Belum Bayar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Jadual Responsif -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3.5 px-4">Pelajar & Penjaga</th>
+                                <th class="py-3.5 px-4">Sekolah & Sesi</th>
+                                <th class="py-3.5 px-4">Pelan & Yuran</th>
+                                <th class="py-3.5 px-4">Agihan Van</th>
+                                <th class="py-3.5 px-4">Status Bayaran</th>
+                                <th class="py-3.5 px-4 text-right">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-students-tbody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Baris pelajar dirender oleh JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TETAPAN KADAR YURAN BULANAN -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-navy-900 px-6 py-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-school-400/20 text-school-400 flex items-center justify-center">
+                            <i class="fa-solid fa-tags"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-base">Tetapan Kadar Yuran Bulanan (RM)</h3>
+                            <p class="text-xs text-slate-400">Perubahan harga akan dikemas kini serta-merta pada borang pendaftaran ibu bapa.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form onsubmit="handleSaveRates(event)" class="p-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Pelan Pergi Sahaja</label>
+                            <div class="relative mt-2">
+                                <span class="absolute left-3.5 top-2.5 font-bold text-slate-500 text-sm">RM</span>
+                                <input type="number" id="rate-pergi" min="10" step="1" required class="w-full pl-11 pr-4 py-2 rounded-xl border border-slate-300 font-bold text-navy-900 focus:ring-2 focus:ring-school-400 outline-none">
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1.5">Ambil dari rumah ke sekolah sahaja</p>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Pelan Balik Sahaja</label>
+                            <div class="relative mt-2">
+                                <span class="absolute left-3.5 top-2.5 font-bold text-slate-500 text-sm">RM</span>
+                                <input type="number" id="rate-balik" min="10" step="1" required class="w-full pl-11 pr-4 py-2 rounded-xl border border-slate-300 font-bold text-navy-900 focus:ring-2 focus:ring-school-400 outline-none">
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1.5">Ambil dari sekolah pulang ke rumah</p>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-amber-50/60 border border-amber-200">
+                            <label class="block text-xs font-bold uppercase text-amber-800 mb-1">Pelan Pergi & Balik</label>
+                            <div class="relative mt-2">
+                                <span class="absolute left-3.5 top-2.5 font-bold text-amber-700 text-sm">RM</span>
+                                <input type="number" id="rate-dua-hala" min="10" step="1" required class="w-full pl-11 pr-4 py-2 rounded-xl border border-amber-300 font-bold text-navy-900 focus:ring-2 focus:ring-school-400 outline-none bg-white">
+                            </div>
+                            <p class="text-[11px] text-amber-700 mt-1.5">Perjalanan lengkap pergi & pulang</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 flex justify-end">
+                        <button type="submit" class="bg-navy-900 hover:bg-navy-800 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-floppy-disk text-school-400"></i>
+                            <span>Simpan Tetapan Kadar</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-van-shuttle text-school-500 text-base"></i>
+                <span class="font-semibold text-navy-900">VanSekolah.my</span> — Sistem Pengurusan Pengangkutan Pelajar Berlesen (APAD).
+            </div>
+            <div>
+                Bantuan Pengusaha Van: <span class="font-semibold text-navy-900">+60 13-889 4410</span> (WhatsApp)
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 1: GERBANG PEMBAYARAN DALAM TALIAN (FPX / DUITNOW QR / KAD)     -->
+    <!-- ===================================================================== -->
+    <div id="payment-modal" class="fixed inset-0 z-50 hidden bg-navy-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+            <!-- Header Modal -->
+            <div class="bg-navy-900 px-6 py-4 flex items-center justify-between text-white">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-lock text-school-400"></i>
+                    <h3 class="font-bold text-base">Pembayaran Yuran Van Sekolah</h3>
+                </div>
+                <button onclick="closePaymentModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Kandungan Modal -->
+            <div class="p-6 space-y-5">
+                <!-- Ringkasan Bil -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>Nama Pelajar:</span>
+                        <span id="pay-student-name" class="font-bold text-navy-900">-</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>Sekolah & Pelan:</span>
+                        <span id="pay-plan-details" class="font-medium text-slate-700">-</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>Tempoh Bil:</span>
+                        <span class="font-medium text-slate-700">November 2026</span>
+                    </div>
+                    <div class="pt-2 border-t border-slate-200 flex justify-between items-center">
+                        <span class="text-sm font-bold text-navy-900">Jumlah Perlu Dibayar:</span>
+                        <span id="pay-amount-display" class="text-xl font-extrabold text-emerald-600">RM 0.00</span>
+                    </div>
+                </div>
+
+                <!-- Pilihan Kaedah Pembayaran -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">Pilih Kaedah Pembayaran</label>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <button type="button" onclick="selectPaymentMethod('FPX')" id="method-btn-FPX" class="pay-method-btn p-3 rounded-xl border-2 border-school-400 bg-amber-50/50 text-center transition flex flex-col items-center gap-1.5">
+                            <i class="fa-solid fa-building-columns text-navy-900 text-lg"></i>
+                            <span class="text-xs font-bold text-navy-900">FPX Online</span>
+                        </button>
+                        <button type="button" onclick="selectPaymentMethod('DUITNOW')" id="method-btn-DUITNOW" class="pay-method-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-center transition flex flex-col items-center gap-1.5">
+                            <i class="fa-solid fa-qrcode text-pink-600 text-lg"></i>
+                            <span class="text-xs font-bold text-slate-700">DuitNow QR</span>
+                        </button>
+                        <button type="button" onclick="selectPaymentMethod('CARD')" id="method-btn-CARD" class="pay-method-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-center transition flex flex-col items-center gap-1.5">
+                            <i class="fa-regular fa-credit-card text-blue-600 text-lg"></i>
+                            <span class="text-xs font-bold text-slate-700">Kad Kredit/Debit</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Paparan Dinamik Mengikut Kaedah -->
+                <div id="method-panel-FPX" class="space-y-3">
+                    <label class="block text-xs font-medium text-slate-700">Pilih Bank Perbankan Internet (FPX):</label>
+                    <select id="fpx-bank-select" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-school-400 outline-none font-medium">
+                        <option value="Maybank2u">Maybank2u (Malayan Banking Berhad)</option>
+                        <option value="CIMB Clicks">CIMB Clicks (CIMB Bank Berhad)</option>
+                        <option value="Bank Islam">Bank Islam Internet Banking</option>
+                        <option value="RHB Now">RHB Now (RHB Bank)</option>
+                        <option value="Public Bank">PBe (Public Bank Berhad)</option>
+                        <option value="Bank Rakyat">iRakyat (Bank Rakyat)</option>
+                    </select>
+                </div>
+
+                <div id="method-panel-DUITNOW" class="hidden bg-pink-50/60 border border-pink-200 rounded-xl p-4 text-center space-y-2">
+                    <span class="inline-block px-2.5 py-0.5 bg-pink-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wider">DuitNow QR Nasional</span>
+                    <!-- Simulasi Kod QR SVG -->
+                    <div class="w-36 h-36 mx-auto bg-white p-2.5 rounded-xl border border-pink-200 shadow-sm flex items-center justify-center">
+                        <svg viewBox="0 0 100 100" class="w-full h-full text-navy-900">
+                            <rect x="5" y="5" width="25" height="25" fill="none" stroke="currentColor" stroke-width="5"/>
+                            <rect x="12" y="12" width="11" height="11" fill="currentColor"/>
+                            <rect x="70" y="5" width="25" height="25" fill="none" stroke="currentColor" stroke-width="5"/>
+                            <rect x="77" y="12" width="11" height="11" fill="currentColor"/>
+                            <rect x="5" y="70" width="25" height="25" fill="none" stroke="currentColor" stroke-width="5"/>
+                            <rect x="12" y="77" width="11" height="11" fill="currentColor"/>
+                            <rect x="40" y="10" width="8" height="8" fill="currentColor"/>
+                            <rect x="52" y="18" width="8" height="14" fill="currentColor"/>
+                            <rect x="38" y="38" width="24" height="24" rx="4" fill="#db2777"/>
+                            <text x="50" y="53" font-size="8" font-weight="bold" fill="white" text-anchor="middle">QR</text>
+                            <rect x="10" y="42" width="14" height="8" fill="currentColor"/>
+                            <rect x="72" y="45" width="18" height="8" fill="currentColor"/>
+                            <rect x="42" y="72" width="12" height="18" fill="currentColor"/>
+                            <rect x="65" y="70" width="10" height="10" fill="currentColor"/>
+                            <rect x="82" y="80" width="12" height="12" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <p class="text-xs font-semibold text-slate-700">Imbas menggunakan aplikasi MAE, CIMB OCTO, Touch 'n Go eWallet atau mana-mana aplikasi bank.</p>
+                </div>
+
+                <div id="method-panel-CARD" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Nombor Kad (Visa / Mastercard)</label>
+                        <input type="text" value="4532 •••• •••• 8821" readonly class="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 text-sm font-mono text-slate-600">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Tamat Tempoh</label>
+                            <input type="text" value="09/29" readonly class="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 text-sm font-mono text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">CVV</label>
+                            <input type="password" value="123" readonly class="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 text-sm font-mono text-slate-600">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Butang Sahkan Bayaran -->
+                <button id="confirm-pay-btn" onclick="processPayment()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span id="confirm-pay-btn-text">Bayar Sekarang</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 2: RESIT RASMI DIGITAL (BOLEH DICETAK)                          -->
+    <!-- ===================================================================== -->
+    <div id="receipt-modal" class="fixed inset-0 z-50 hidden bg-navy-950/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+            
+            <!-- Bahagian Boleh Dicetak -->
+            <div id="receipt-printable" class="p-6 sm:p-8 bg-white space-y-5">
+                <!-- Header Resit -->
+                <div class="text-center border-b border-dashed border-slate-300 pb-5">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 text-2xl">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <span class="inline-block px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold uppercase tracking-wider mb-1">PEMBAYARAN BERJAYA</span>
+                    <h3 class="text-lg font-extrabold text-navy-900">RESIT RASMI PEMBAYARAN</h3>
+                    <p class="text-xs text-slate-500">VanSekolah.my Enterprise (003291842-K)</p>
+                </div>
+
+                <!-- Butiran Transaksi -->
+                <div class="space-y-2.5 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">No. Rujukan Resit:</span>
+                        <span id="rec-ref" class="font-mono font-bold text-navy-900">INV-202611-001</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Tarikh & Masa:</span>
+                        <span id="rec-date" class="font-medium text-slate-800">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Kaedah Bayaran:</span>
+                        <span id="rec-method" class="font-semibold text-slate-800">-</span>
+                    </div>
+                    <div class="border-t border-slate-100 my-2"></div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Nama Pelajar:</span>
+                        <span id="rec-student" class="font-bold text-navy-900">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Sekolah:</span>
+                        <span id="rec-school" class="font-medium text-slate-800">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Pelan Perjalanan:</span>
+                        <span id="rec-plan" class="font-medium text-slate-800">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Bulan Yuran:</span>
+                        <span id="rec-month" class="font-medium text-slate-800">November 2026</span>
+                    </div>
+                </div>
+
+                <!-- Jumlah Besar -->
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase text-slate-500">Jumlah Dibayar</span>
+                    <span id="rec-amount" class="text-2xl font-extrabold text-navy-900">RM 140.00</span>
+                </div>
+
+                <p class="text-[11px] text-center text-slate-400">Resit ini dijana secara komputer dan sah tanpa tandatangan. Terima kasih kerana menggunakan perkhidmatan kami.</p>
+            </div>
+
+            <!-- Butang Tindakan Resit (Tidak Dicetak) -->
+            <div class="no-print bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center gap-3">
+                <button onclick="window.print()" class="flex-1 bg-navy-900 hover:bg-navy-800 text-white font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-print text-school-400"></i>
+                    <span>Cetak / Simpan PDF</span>
+                </button>
+                <button onclick="closeReceiptModal()" class="px-5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 3: PENGESAHAN PADAM / RESET DATA (MENGGANTIKAN CONFIRM())       -->
+    <!-- ===================================================================== -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden bg-navy-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 id="confirm-modal-title" class="text-lg font-bold text-navy-900">Sahkan Tindakan</h3>
+                <p id="confirm-modal-desc" class="text-sm text-slate-500 mt-1">Adakah anda pasti mahu meneruskan tindakan ini?</p>
+            </div>
+            <div class="flex items-center justify-end gap-2.5 pt-2">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition">Batal</button>
+                <button id="confirm-modal-action-btn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold transition">Ya, Teruskan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KONTAINER NOTIFIKASI TOAST -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- ===================================================================== -->
+    <!-- LOGIK JAVASCRIPT APLIKASI                                             -->
+    <!-- ===================================================================== -->
+    <script>
+        // Kunci Storan Tempatan (localStorage)
+        const STORAGE_KEY_STUDENTS = 'vansekolah_students_v1';
+        const STORAGE_KEY_PAYMENTS = 'vansekolah_payments_v1';
+        const STORAGE_KEY_RATES = 'vansekolah_rates_v1';
+
+        // Maklumat Pemandu & Van
+        const VANS_INFO = {
+            'Van 01': { driver: 'En. Razak bin Dollah', plate: 'VKA 4812', phone: '+60 12-391 8820' },
+            'Van 02': { driver: 'En. Siva Subramaniam', plate: 'VJQ 9021', phone: '+60 16-772 1904' },
+            'Van 03': { driver: 'En. Hafizuddin Roslan', plate: 'VLE 3319', phone: '+60 19-204 5518' },
+            'Belum Ditetapkan': { driver: 'Sedang Disusun Admin', plate: '-', phone: '-' }
+        };
+
+        // Data Contoh Lalai (Default Seed Data)
+        const DEFAULT_RATES = {
+            'Pergi Sahaja': 80,
+            'Balik Sahaja': 80,
+            'Pergi & Balik': 140
+        };
+
+        const DEFAULT_STUDENTS = [
+            {
+                id: 'STU-1001',
+                name: 'Aisyah Humaira binti Ahmad',
+                grade: 'Tahun 3 (9 Tahun)',
+                school: 'SK Putrajaya Presint 8(1)',
+                session: 'Pagi',
+                plan: 'Pergi & Balik',
+                parentName: 'Pn. Norazlina binti Osman',
+                phone: '12-654 3210',
+                address: 'No. 22, Jalan P8D/1, Presint 8, 62250 Putrajaya',
+                vanNo: 'Van 01',
+                status: 'PAID',
+                registeredDate: '2026-01-05'
+            },
+            {
+                id: 'STU-1002',
+                name: 'Muhammad Rayyan bin Zulkifli',
+                grade: 'Tahun 5 (11 Tahun)',
+                school: 'SK Putrajaya Presint 9(2)',
+                session: 'Pagi & Petang',
+                plan: 'Pergi & Balik',
+                parentName: 'En. Zulkifli bin Mansor',
+                phone: '19-332 8891',
+                address: 'Blok B-04-08, Apartment Putra Harmoni, Presint 9, Putrajaya',
+                vanNo: 'Van 02',
+                status: 'UNPAID',
+                registeredDate: '2026-01-10'
+            },
+            {
+                id: 'STU-1003',
+                name: 'Darren Lim Wei Jie',
+                grade: 'Tingkatan 2',
+                school: 'SMK Putrajaya Presint 8(1)',
+                session: 'Pagi',
+                plan: 'Balik Sahaja',
+                parentName: 'En. Lim Boon Huat',
+                phone: '16-229 4102',
+                address: 'No. 8, Jalan P11A/4, Presint 11, 62300 Putrajaya',
+                vanNo: 'Van 01',
+                status: 'UNPAID',
+                registeredDate: '2026-02-01'
+            },
+            {
+                id: 'STU-1004',
+                name: 'Nurul Iman binti Faizal',
+                grade: 'Tahun 1 (7 Tahun)',
+                school: 'SRA Al-Najah Presint 9',
+                session: 'Petang',
+                plan: 'Pergi Sahaja',
+                parentName: 'En. Faizal bin Kamarudin',
+                phone: '13-908 1123',
+                address: 'No. 45, Jalan P9C/3, Presint 9, 62250 Putrajaya',
+                vanNo: 'Van 03',
+                status: 'PAID',
+                registeredDate: '2026-03-12'
+            }
+        ];
+
+        const DEFAULT_PAYMENTS = [
+            {
+                refNo: 'VS-202611-8841',
+                studentId: 'STU-1001',
+                studentName: 'Aisyah Humaira binti Ahmad',
+                school: 'SK Putrajaya Presint 8(1)',
+                plan: 'Pergi & Balik',
+                amount: 140,
+                method: 'FPX Online (Maybank2u)',
+                month: 'November 2026',
+                date: '02 Nov 2026, 08:42 PG'
+            },
+            {
+                refNo: 'VS-202611-8892',
+                studentId: 'STU-1004',
+                studentName: 'Nurul Iman binti Faizal',
+                school: 'SRA Al-Najah Presint 9',
+                plan: 'Pergi Sahaja',
+                amount: 80,
+                method: 'DuitNow QR',
+                month: 'November 2026',
+                date: '04 Nov 2026, 02:15 PTG'
+            }
+        ];
+
+        // State Aplikasi
+        let students = [];
+        let payments = [];
+        let rates = {};
+        let selectedStudentForPayment = null;
+        let currentPaymentMethod = 'FPX';
+
+        // Inisialisasi Aplikasi
+        function initApp() {
+            loadFromStorage();
+            renderPlanOptions();
+            renderParentPortal();
+            renderAdminDashboard();
+        }
+
+        // Muat data dari localStorage atau guna data contoh
+        function loadFromStorage() {
+            const savedStudents = localStorage.getItem(STORAGE_KEY_STUDENTS);
+            const savedPayments = localStorage.getItem(STORAGE_KEY_PAYMENTS);
+            const savedRates = localStorage.getItem(STORAGE_KEY_RATES);
+
+            students = savedStudents ? JSON.parse(savedStudents) : JSON.parse(JSON.stringify(DEFAULT_STUDENTS));
+            payments = savedPayments ? JSON.parse(savedPayments) : JSON.parse(JSON.stringify(DEFAULT_PAYMENTS));
+            rates = savedRates ? JSON.parse(savedRates) : JSON.parse(JSON.stringify(DEFAULT_RATES));
+
+            saveToStorage();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
+            localStorage.setItem(STORAGE_KEY_PAYMENTS, JSON.stringify(payments));
+            localStorage.setItem(STORAGE_KEY_RATES, JSON.stringify(rates));
+        }
+
+        // Tukar Paparan antara Portal Ibu Bapa & Admin
+        function switchRole(role) {
+            const parentView = document.getElementById('view-parent');
+            const adminView = document.getElementById('view-admin');
+            const tabParent = document.getElementById('tab-parent');
+            const tabAdmin = document.getElementById('tab-admin');
+
+            if (role === 'parent') {
+                parentView.classList.remove('hidden');
+                adminView.classList.add('hidden');
+                tabParent.className = 'flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-school-400 text-navy-900 shadow-sm';
+                tabAdmin.className = 'flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-300 hover:text-white hover:bg-slate-800/70';
+                renderParentPortal();
+            } else {
+                parentView.classList.add('hidden');
+                adminView.classList.remove('hidden');
+                tabAdmin.className = 'flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-school-400 text-navy-900 shadow-sm';
+                tabParent.className = 'flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-slate-300 hover:text-white hover:bg-slate-800/70';
+                renderAdminDashboard();
+            }
+        }
+
+        // =====================================================================
+        // RENDER PORTAL IBU BAPA
+        // =====================================================================
+        function renderParentPortal() {
+            renderStudentCards();
+            renderPaymentHistory();
+        }
+
+        function renderPlanOptions() {
+            const container = document.getElementById('plan-options-container');
+            const plans = [
+                { key: 'Pergi Sahaja', desc: 'Rumah ke Sekolah', icon: 'fa-arrow-right-to-bracket' },
+                { key: 'Balik Sahaja', desc: 'Sekolah ke Rumah', icon: 'fa-house-chimney' },
+                { key: 'Pergi & Balik', desc: 'Dua Hala Lengkap', icon: 'fa-arrows-left-right', popular: true }
+            ];
+
+            container.innerHTML = plans.map((p, idx) => `
+                <label class="cursor-pointer relative">
+                    <input type="radio" name="reg-plan" value="${p.key}" ${p.popular ? 'checked' : ''} class="peer sr-only">
+                    <div class="p-3.5 rounded-xl border-2 border-slate-200 peer-checked:border-school-500 peer-checked:bg-amber-50/60 hover:border-slate-300 transition h-full flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold text-navy-900">${p.key}</span>
+                                <i class="fa-solid ${p.icon} text-slate-400 peer-checked:text-school-600 text-xs"></i>
+                            </div>
+                            <p class="text-[11px] text-slate-500">${p.desc}</p>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                            <span class="text-base font-extrabold text-navy-900">RM ${rates[p.key]}</span>
+                            <span class="text-[10px] text-slate-400">/ bulan</span>
+                        </div>
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        function renderStudentCards() {
+            const grid = document.getElementById('parent-students-grid');
+            const summaryEl = document.getElementById('parent-unpaid-summary');
+
+            const unpaidStudents = students.filter(s => s.status === 'UNPAID');
+            const totalUnpaidAmount = unpaidStudents.reduce((sum, s) => sum + (rates[s.plan] || 0), 0);
+
+            if (unpaidStudents.length > 0) {
+                summaryEl.className = 'text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2';
+                summaryEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-amber-500"></i> <span>${unpaidStudents.length} Yuran Belum Dijelaskan (Jumlah: <strong>RM ${totalUnpaidAmount.toFixed(2)}</strong>)</span>`;
+            } else {
+                summaryEl.className = 'text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2';
+                summaryEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> <span>Semua Yuran Bulan Ini Telah Selesai!</span>`;
+            }
+
+            if (students.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+                        <i class="fa-solid fa-van-shuttle text-4xl text-slate-300 mb-3"></i>
+                        <h3 class="font-bold text-navy-900">Tiada Pelajar Berdaftar</h3>
+                        <p class="text-sm text-slate-500 mt-1">Sila isi borang pendaftaran di bawah untuk mendaftarkan anak anda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = students.map(student => {
+                const fee = rates[student.plan] || 0;
+                const isPaid = student.status === 'PAID';
+                const vanDetail = VANS_INFO[student.vanNo] || VANS_INFO['Belum Ditetapkan'];
+
+                return `
+                <div class="bg-white rounded-2xl border ${isPaid ? 'border-slate-200' : 'border-amber-300 ring-1 ring-amber-200/50'} shadow-sm hover:shadow-md transition flex flex-col justify-between overflow-hidden">
+                    <div>
+                        <!-- Atas Kad: Status & Van -->
+                        <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-navy-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                <i class="fa-solid fa-van-shuttle text-school-500"></i>
+                                <span>${student.vanNo}</span>
+                            </span>
+                            ${isPaid 
+                                ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle"></i> Selesai Bayar</span>`
+                                : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-clock"></i> Belum Bayar</span>`
+                            }
+                        </div>
+
+                        <!-- Tengah Kad: Info Pelajar -->
+                        <div class="p-5 space-y-3">
+                            <div>
+                                <h3 class="font-bold text-navy-900 text-base leading-snug">${student.name}</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">${student.grade} • <span class="font-medium text-slate-700">${student.school}</span></p>
+                            </div>
+
+                            <div class="bg-slate-50 rounded-xl p-3 space-y-1.5 text-xs border border-slate-100">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Sesi & Pelan:</span>
+                                    <span class="font-semibold text-navy-900">${student.session} (${student.plan})</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Pemandu Van:</span>
+                                    <span class="font-medium text-slate-700">${vanDetail.driver}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">No. Plat Van:</span>
+                                    <span class="font-mono font-semibold text-slate-700">${vanDetail.plate}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bawah Kad: Yuran & Butang Bayar / Resit -->
+                    <div class="px-5 py-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between gap-3">
+                        <div>
+                            <span class="text-[11px] text-slate-400 block">Yuran Bulanan</span>
+                            <span class="text-lg font-extrabold text-navy-900">RM ${fee.toFixed(2)}</span>
+                        </div>
+                        ${isPaid 
+                            ? `<button onclick="viewLatestReceiptForStudent('${student.id}')" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-navy-900 border border-slate-300 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
+                                <i class="fa-solid fa-receipt text-emerald-600"></i>
+                                <span>Lihat Resit</span>
+                               </button>`
+                            : `<button onclick="openPaymentModal('${student.id}')" class="px-4 py-2.5 rounded-xl bg-school-400 hover:bg-school-500 text-navy-900 text-xs font-extrabold transition flex items-center gap-1.5 shadow-sm">
+                                <i class="fa-solid fa-credit-card"></i>
+                                <span>Bayar Sekarang</span>
+                               </button>`
+                        }
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderPaymentHistory() {
+            const list = document.getElementById('payment-history-list');
+            const countBadge = document.getElementById('payment-history-count');
+            countBadge.textContent = `${payments.length} Rekod`;
+
+            if (payments.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 text-center py-8">Tiada rekod transaksi pembayaran lagi.</p>`;
+                return;
+            }
+
+            // Susun paling terkini di atas
+            const sorted = [...payments].reverse();
+            list.innerHTML = sorted.map(pay => `
+                <div onclick="showReceiptByRef('${pay.refNo}')" class="cursor-pointer p-3.5 rounded-xl border border-slate-200 hover:border-school-400 hover:bg-amber-50/20 transition flex items-center justify-between gap-3 group">
+                    <div class="flex items-start gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-emerald-600 group-hover:text-white transition">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-navy-900 group-hover:text-school-600 transition">${pay.studentName}</h4>
+                            <p class="text-[11px] text-slate-500 mt-0.5">${pay.month} • ${pay.method}</p>
+                            <span class="text-[10px] font-mono text-slate-400">${pay.refNo} • ${pay.date}</span>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="block text-sm font-extrabold text-emerald-600">RM ${Number(pay.amount).toFixed(2)}</span>
+                        <span class="text-[10px] font-semibold text-slate-400 group-hover:text-navy-900 underline">Resit &rarr;</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Pendaftaran Pelajar Baru
+        function handleRegisterStudent(e) {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value.trim();
+            const grade = document.getElementById('reg-grade').value;
+            const school = document.getElementById('reg-school').value;
+            const session = document.getElementById('reg-session').value;
+            const plan = document.querySelector('input[name="reg-plan"]:checked').value;
+            const parentName = document.getElementById('reg-parent').value.trim();
+            const phone = document.getElementById('reg-phone').value.trim();
+            const address = document.getElementById('reg-address').value.trim();
+
+            // Agihkan van secara automatik berdasarkan kapasiti semasa
+            const vanCounts = { 'Van 01': 0, 'Van 02': 0, 'Van 03': 0 };
+            students.forEach(s => { if (vanCounts[s.vanNo] !== undefined) vanCounts[s.vanNo]++; });
+            let assignedVan = 'Van 01';
+            if (vanCounts['Van 02'] < vanCounts[assignedVan]) assignedVan = 'Van 02';
+            if (vanCounts['Van 03'] < vanCounts[assignedVan]) assignedVan = 'Van 03';
+
+            const newStudent = {
+                id: 'STU-' + Math.floor(1000 + Math.random() * 9000),
+                name,
+                grade,
+                school,
+                session,
+                plan,
+                parentName,
+                phone,
+                address,
+                vanNo: assignedVan,
+                status: 'UNPAID',
+                registeredDate: new Date().toISOString().split('T')[0]
+            };
+
+            students.unshift(newStudent);
+            saveToStorage();
+            e.target.reset();
+            renderPlanOptions();
+            renderParentPortal();
+            renderAdminDashboard();
+
+            showToast(`Pendaftaran berjaya! ${name} telah ditempatkan ke ${assignedVan}.`, 'success');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // =====================================================================
+        // SISTEM PEMBAYARAN & RESIT DIGITAL
+        // =====================================================================
+        function openPaymentModal(studentId) {
+            const student = students.find(s => s.id === studentId);
+            if (!student) return;
+
+            selectedStudentForPayment = student;
+            const fee = rates[student.plan] || 0;
+
+            document.getElementById('pay-student-name').textContent = student.name;
+            document.getElementById('pay-plan-details').textContent = `${student.school} (${student.plan})`;
+            document.getElementById('pay-amount-display').textContent = `RM ${fee.toFixed(2)}`;
+            document.getElementById('confirm-pay-btn-text').textContent = `Bayar Sekarang — RM ${fee.toFixed(2)}`;
+
+            selectPaymentMethod('FPX');
+            document.getElementById('payment-modal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            selectedStudentForPayment = null;
+        }
+
+        function selectPaymentMethod(method) {
+            currentPaymentMethod = method;
+            ['FPX', 'DUITNOW', 'CARD'].forEach(m => {
+                const btn = document.getElementById(`method-btn-${m}`);
+                const panel = document.getElementById(`method-panel-${m}`);
+                if (m === method) {
+                    btn.className = 'pay-method-btn p-3 rounded-xl border-2 border-school-400 bg-amber-50/60 text-center transition flex flex-col items-center gap-1.5';
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.className = 'pay-method-btn p-3 rounded-xl border border-slate-200 hover:border-slate-300 text-center transition flex flex-col items-center gap-1.5';
+                    panel.classList.add('hidden');
+                }
+            });
+        }
+
+        function processPayment() {
+            if (!selectedStudentForPayment) return;
+
+            const btn = document.getElementById('confirm-pay-btn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Memproses Transaksi...</span>`;
+
+            setTimeout(() => {
+                const fee = rates[selectedStudentForPayment.plan] || 0;
+                let methodLabel = 'FPX Online Banking';
+                if (currentPaymentMethod === 'FPX') {
+                    const bank = document.getElementById('fpx-bank-select').value;
+                    methodLabel = `FPX (${bank})`;
+                } else if (currentPaymentMethod === 'DUITNOW') {
+                    methodLabel = 'DuitNow QR';
+                } else {
+                    methodLabel = 'Kad Debit/Kredit';
+                }
+
+                const now = new Date();
+                const dateFormatted = now.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+                                      now.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
+                const refNo = 'VS-202611-' + Math.floor(1000 + Math.random() * 9000);
+
+                // Kemas kini status pelajar
+                const idx = students.findIndex(s => s.id === selectedStudentForPayment.id);
+                if (idx !== -1) {
+                    students[idx].status = 'PAID';
+                }
+
+                // Rekod pembayaran baru
+                const newReceipt = {
+                    refNo,
+                    studentId: selectedStudentForPayment.id,
+                    studentName: selectedStudentForPayment.name,
+                    school: selectedStudentForPayment.school,
+                    plan: selectedStudentForPayment.plan,
+                    amount: fee,
+                    method: methodLabel,
+                    month: 'November 2026',
+                    date: dateFormatted
+                };
+
+                payments.push(newReceipt);
+                saveToStorage();
+
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                closePaymentModal();
+
+                renderParentPortal();
+                renderAdminDashboard();
+                openReceiptModal(newReceipt);
+                showToast(`Pembayaran RM ${fee.toFixed(2)} berjaya disahkan!`, 'success');
+            }, 900);
+        }
+
+        function openReceiptModal(receipt) {
+            document.getElementById('rec-ref').textContent = receipt.refNo;
+            document.getElementById('rec-date').textContent = receipt.date;
+            document.getElementById('rec-method').textContent = receipt.method;
+            document.getElementById('rec-student').textContent = receipt.studentName;
+            document.getElementById('rec-school').textContent = receipt.school;
+            document.getElementById('rec-plan').textContent = receipt.plan;
+            document.getElementById('rec-month').textContent = receipt.month;
+            document.getElementById('rec-amount').textContent = `RM ${Number(receipt.amount).toFixed(2)}`;
+
+            document.getElementById('receipt-modal').classList.remove('hidden');
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receipt-modal').classList.add('hidden');
+        }
+
+        function showReceiptByRef(refNo) {
+            const receipt = payments.find(p => p.refNo === refNo);
+            if (receipt) openReceiptModal(receipt);
+        }
+
+        function viewLatestReceiptForStudent(studentId) {
+            const studentReceipts = payments.filter(p => p.studentId === studentId);
+            if (studentReceipts.length > 0) {
+                openReceiptModal(studentReceipts[studentReceipts.length - 1]);
+            } else {
+                const student = students.find(s => s.id === studentId);
+                if (student) {
+                    openReceiptModal({
+                        refNo: 'VS-MANUAL-' + student.id.split('-')[1],
+                        studentName: student.name,
+                        school: student.school,
+                        plan: student.plan,
+                        amount: rates[student.plan] || 0,
+                        method: 'Tunai / Pengesahan Pentadbir',
+                        month: 'November 2026',
+                        date: 'Direkodkan oleh Pentadbir'
+                    });
+                }
+            }
+        }
+
+        // =====================================================================
+        // PAPAN PEMUKA PENTADBIR (ADMIN DASHBOARD)
+        // =====================================================================
+        function renderAdminDashboard() {
+            // 1. Statistik
+            const totalStudents = students.length;
+            const paidStudents = students.filter(s => s.status === 'PAID');
+            const unpaidStudents = students.filter(s => s.status === 'UNPAID');
+
+            const collectedAmount = paidStudents.reduce((sum, s) => sum + (rates[s.plan] || 0), 0);
+            const unpaidAmount = unpaidStudents.reduce((sum, s) => sum + (rates[s.plan] || 0), 0);
+
+            document.getElementById('stat-total-students').textContent = totalStudents;
+            document.getElementById('stat-total-collected').textContent = `RM ${collectedAmount.toFixed(2)}`;
+            document.getElementById('stat-collected-sub').textContent = `${paidStudents.length} daripada ${totalStudents} telah bayar`;
+            document.getElementById('stat-total-unpaid').textContent = `RM ${unpaidAmount.toFixed(2)}`;
+            document.getElementById('stat-unpaid-count').textContent = `${unpaidStudents.length} pelajar belum bayar`;
+            document.getElementById('stat-van-capacity').textContent = `${totalStudents} / 36`;
+
+            // 2. Tetapan Kadar semasa pada input admin
+            document.getElementById('rate-pergi').value = rates['Pergi Sahaja'];
+            document.getElementById('rate-balik').value = rates['Balik Sahaja'];
+            document.getElementById('rate-dua-hala').value = rates['Pergi & Balik'];
+
+            // 3. Jadual pelajar
+            renderAdminTable();
+        }
+
+        function renderAdminTable() {
+            const tbody = document.getElementById('admin-students-tbody');
+            const searchQuery = document.getElementById('admin-search').value.toLowerCase();
+            const schoolFilter = document.getElementById('admin-filter-school').value;
+            const statusFilter = document.getElementById('admin-filter-status').value;
+
+            const filtered = students.filter(s => {
+                const matchesSearch = s.name.toLowerCase().includes(searchQuery) ||
+                                      s.parentName.toLowerCase().includes(searchQuery) ||
+                                      s.address.toLowerCase().includes(searchQuery);
+                const matchesSchool = schoolFilter === 'ALL' || s.school === schoolFilter;
+                const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter;
+                return matchesSearch && matchesSchool && matchesStatus;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-10 text-center text-slate-400 text-xs">
+                            Tiada rekod pelajar sepadan dengan carian atau penapis anda.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(s => {
+                const fee = rates[s.plan] || 0;
+                const isPaid = s.status === 'PAID';
+
+                return `
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="py-3.5 px-4">
+                        <div class="font-bold text-navy-900 text-xs sm:text-sm">${s.name}</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">${s.parentName} • <span class="text-emerald-700 font-medium">+60${s.phone}</span></div>
+                        <div class="text-[11px] text-slate-400 truncate max-w-xs" title="${s.address}"><i class="fa-solid fa-location-dot text-slate-300 mr-1"></i>${s.address}</div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <div class="text-xs font-semibold text-slate-800">${s.school}</div>
+                        <span class="inline-block mt-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">${s.grade} • Sesi ${s.session}</span>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <div class="text-xs font-medium text-slate-700">${s.plan}</div>
+                        <div class="text-xs font-extrabold text-navy-900 mt-0.5">RM ${fee.toFixed(2)}</div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <select onchange="adminChangeVan('${s.id}', this.value)" class="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white text-navy-900 focus:ring-2 focus:ring-school-400 outline-none">
+                            <option value="Van 01" ${s.vanNo === 'Van 01' ? 'selected' : ''}>Van 01 (En. Razak)</option>
+                            <option value="Van 02" ${s.vanNo === 'Van 02' ? 'selected' : ''}>Van 02 (En. Siva)</option>
+                            <option value="Van 03" ${s.vanNo === 'Van 03' ? 'selected' : ''}>Van 03 (En. Hafiz)</option>
+                            <option value="Belum Ditetapkan" ${s.vanNo === 'Belum Ditetapkan' ? 'selected' : ''}>Belum Ditetapkan</option>
+                        </select>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <button onclick="adminTogglePaymentStatus('${s.id}')" title="Klik untuk tukar status bayaran" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition ${isPaid ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}">
+                            <i class="fa-solid ${isPaid ? 'fa-circle-check' : 'fa-clock'}"></i>
+                            <span>${isPaid ? 'Selesai Bayar' : 'Belum Bayar'}</span>
+                        </button>
+                    </td>
+                    <td class="py-3.5 px-4 text-right">
+                        <button onclick="confirmDeleteStudent('${s.id}')" class="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Padam Rekod Pelajar">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        function adminChangeVan(studentId, newVan) {
+            const idx = students.findIndex(s => s.id === studentId);
+            if (idx !== -1) {
+                students[idx].vanNo = newVan;
+                saveToStorage();
+                renderAdminDashboard();
+                showToast(`Agihan van untuk ${students[idx].name} dikemas kini ke ${newVan}.`, 'info');
+            }
+        }
+
+        function adminTogglePaymentStatus(studentId) {
+            const idx = students.findIndex(s => s.id === studentId);
+            if (idx === -1) return;
+
+            const student = students[idx];
+            if (student.status === 'UNPAID') {
+                student.status = 'PAID';
+                const now = new Date();
+                const dateFormatted = now.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+                                      now.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
+                payments.push({
+                    refNo: 'VS-CASH-' + Math.floor(1000 + Math.random() * 9000),
+                    studentId: student.id,
+                    studentName: student.name,
+                    school: student.school,
+                    plan: student.plan,
+                    amount: rates[student.plan] || 0,
+                    method: 'Tunai / Terima oleh Admin',
+                    month: 'November 2026',
+                    date: dateFormatted
+                });
+                showToast(`Status bayaran ${student.name} ditandakan SELESAI.`, 'success');
+            } else {
+                student.status = 'UNPAID';
+                showToast(`Status bayaran ${student.name} ditukar kepada BELUM BAYAR.`, 'info');
+            }
+
+            saveToStorage();
+            renderAdminDashboard();
+        }
+
+        function handleSaveRates(e) {
+            e.preventDefault();
+            rates['Pergi Sahaja'] = Number(document.getElementById('rate-pergi').value);
+            rates['Balik Sahaja'] = Number(document.getElementById('rate-balik').value);
+            rates['Pergi & Balik'] = Number(document.getElementById('rate-dua-hala').value);
+
+            saveToStorage();
+            renderPlanOptions();
+            renderAdminDashboard();
+            showToast('Tetapan kadar yuran bulanan berjaya dikemas kini!', 'success');
+        }
+
+        // =====================================================================
+        // MODAL PENGESAHAN & NOTIFIKASI TOAST
+        // =====================================================================
+        let pendingConfirmCallback = null;
+
+        function confirmDeleteStudent(studentId) {
+            const student = students.find(s => s.id === studentId);
+            if (!student) return;
+
+            document.getElementById('confirm-modal-title').textContent = 'Padam Rekod Pelajar?';
+            document.getElementById('confirm-modal-desc').textContent = `Adakah anda pasti mahu memadam rekod pendaftaran "${student.name}" daripada sistem?`;
+            
+            pendingConfirmCallback = () => {
+                students = students.filter(s => s.id !== studentId);
+                saveToStorage();
+                renderAdminDashboard();
+                showToast(`Rekod ${student.name} telah dipadam.`, 'info');
+            };
+
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function openResetModal() {
+            document.getElementById('confirm-modal-title').textContent = 'Reset Semua Data Contoh?';
+            document.getElementById('confirm-modal-desc').textContent = 'Semua pendaftaran baru dan rekod bayaran semasa akan dipadam dan dikembalikan kepada data contoh asal.';
+            
+            pendingConfirmCallback = () => {
+                localStorage.removeItem(STORAGE_KEY_STUDENTS);
+                localStorage.removeItem(STORAGE_KEY_PAYMENTS);
+                localStorage.removeItem(STORAGE_KEY_RATES);
+                loadFromStorage();
+                renderPlanOptions();
+                renderParentPortal();
+                renderAdminDashboard();
+                showToast('Data contoh berjaya ditetapkan semula.', 'success');
+            };
+
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingConfirmCallback = null;
+        }
+
+        document.getElementById('confirm-modal-action-btn').addEventListener('click', () => {
+            if (pendingConfirmCallback) pendingConfirmCallback();
+            closeConfirmModal();
+        });
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const styles = {
+                success: 'bg-navy-900 border-emerald-500 text-white',
+                info: 'bg-navy-900 border-school-400 text-white',
+                error: 'bg-rose-900 border-rose-500 text-white'
+            };
+
+            const icons = {
+                success: '<i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>',
+                info: '<i class="fa-solid fa-circle-info text-school-400 text-base"></i>',
+                error: '<i class="fa-solid fa-triangle-exclamation text-rose-400 text-base"></i>'
+            };
+
+            toast.className = `toast-enter pointer-events-auto p-4 rounded-xl shadow-xl border-l-4 flex items-center gap-3 text-xs sm:text-sm font-medium ${styles[type] || styles.success}`;
+            toast.innerHTML = `${icons[type] || icons.success} <span class="flex-1">${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Mulakan aplikasi apabila halaman dimuatkan
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>

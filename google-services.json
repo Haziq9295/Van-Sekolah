@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "933588110828",
+    "firebase_url": "https://van-sekolah-haq-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "van-sekolah-haq",
+    "storage_bucket": "van-sekolah-haq.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:933588110828:android:3e6986b20c9b339999c4c9",
+        "android_client_info": {
+          "package_name": "Van.sekolah.haq"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOe-NEOMC7YVYx30mBaoT6noCVD-9kEuI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
